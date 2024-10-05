@@ -29,8 +29,8 @@ func main() {
 	}
 
 	go srv.PingDeamon()
-	srv.HandleWS()
-	srv.HandleApiFuncs()
+	srv.HandleWS("/ws")
+	srv.HandleApiFuncs("/api/")
 	srv.HandleStatic(publicFolder)
 
 	log.Println("Server listen:", *addr)

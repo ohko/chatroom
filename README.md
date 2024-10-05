@@ -19,12 +19,15 @@ $ docker run --rm -it -p 8080:8080 -v /tmp/db/:/db/ ohko/chatroom
 
 ## embeded mode
 ```golang
-import "github.com/ohko/chatroom/srv"
+import (
+	chatroomCom "github.com/ohko/chatroom/common/com"
+	"github.com/ohko/chatroom/srv"
+)
 
-if err := com.Init("./db/chatroom.db"); err != nil {
+if err := chatroomCom.Init("./db/chatroom.db"); err != nil {
 	log.Println(err)
 }
 go srv.PingDeamon()
-srv.HandleWS()
-srv.HandleApiFuncs()
+srv.HandleWS("/ws")
+srv.HandleApiFuncs("/api/")
 ```

@@ -15,13 +15,13 @@ import (
 
 type Api struct{}
 
-func HandleApiFuncs() {
+func HandleApiFuncs(path string) {
 	api := &Api{}
 	t := reflect.TypeOf(api)
 	for i := 0; i < t.NumMethod(); i++ {
 		method := t.Method(i)
 		fun := reflect.ValueOf(api).MethodByName(method.Name)
-		http.HandleFunc("/api/"+method.Name, common.Middleware(fun.Interface().(func(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData)))
+		http.HandleFunc(path+method.Name, common.Middleware(fun.Interface().(func(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData)))
 	}
 }
 

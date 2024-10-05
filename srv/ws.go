@@ -97,8 +97,8 @@ func PingDeamon() {
 	}
 }
 
-func HandleWS() {
-	http.HandleFunc("/ws", wsHandler)
+func HandleWS(path string) {
+	http.HandleFunc(path, wsHandler)
 }
 
 type WSMsg struct {

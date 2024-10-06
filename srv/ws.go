@@ -59,30 +59,13 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 				GroupID:    msg.GroupID,
 				Content:    msg.Content,
 			}
-			if msg.GroupID != 0 {
-				userGroups, err := biz.UserGroupListByGroupID(msg.GroupID)
-				if err != nil {
-					conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
-					break
-				}
-				for _, ug := range userGroups {
-					info.ToUserID = ug.UserID
-					if err := biz.MessageSend(&info); err != nil {
-						conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
-						break
-					}
-					if toConn, ok := clients.Load(ug.UserID); ok {
-						toConn.(*websocket.Conn).WriteJSON(info)
-					}
-				}
-			} else {
-				if err := biz.MessageSend(&info); err != nil {
-					conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
-					break
-				}
-				if toConn, ok := clients.Load(msg.ToUserID); ok {
+			if err := biz.MessageSend(&info, func(userID int, info *config.TableMessage) {
+				if toConn, ok := clients.Load(userID); ok {
 					toConn.(*websocket.Conn).WriteJSON(info)
 				}
+			}); err != nil {
+				conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
+				break
 			}
 		}
 	}

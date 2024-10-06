@@ -131,7 +131,7 @@ func Test_message(t *testing.T) {
 		Content:    "hello",
 		CreateTime: time.Now(),
 	}
-	if err := biz.MessageSend(&message); err != nil {
+	if err := biz.MessageSend(&message, nil); err != nil {
 		t.Fatal(err)
 	}
 

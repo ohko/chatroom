@@ -347,27 +347,12 @@ func (Api) MessageSend(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 		Content:    data.Content,
 	}
 
-	if msg.GroupID != 0 {
-		userGroups, err := biz.UserGroupListByGroupID(msg.GroupID)
-		if err != nil {
-			return common.H_JSON(1, err.Error())
+	if err = biz.MessageSend(&msg, func(userID int, info *config.TableMessage) {
+		if toConn, ok := clients.Load(userID); ok {
+			toConn.(*websocket.Conn).WriteJSON(info)
 		}
-		for _, ug := range userGroups {
-			msg.ToUserID = ug.UserID
-			if err = biz.MessageSend(&msg); err != nil {
-				return common.H_JSON(1, err.Error())
-			}
-			if toConn, ok := clients.Load(ug.UserID); ok {
-				toConn.(*websocket.Conn).WriteJSON(msg)
-			}
-		}
-	} else {
-		if err = biz.MessageSend(&msg); err != nil {
-			return common.H_JSON(1, err.Error())
-		}
-		if toConn, ok := clients.Load(msg.ToUserID); ok {
-			toConn.(*websocket.Conn).WriteJSON(msg)
-		}
+	}); err != nil {
+		return common.H_JSON(1, err.Error())
 	}
 
 	return common.H_JSON(0, msg)

@@ -8,6 +8,7 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/ohko/chatroom/biz"
 	"github.com/ohko/chatroom/common"
 	"github.com/ohko/chatroom/config"
@@ -339,15 +340,34 @@ func (Api) MessageSend(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 	}
 
 	msg := config.TableMessage{
+		Type:       data.Type,
 		FromUserID: token.UserID,
 		ToUserID:   data.ToUserID,
 		GroupID:    data.GroupID,
-		Type:       data.Type,
 		Content:    data.Content,
 	}
-	err = biz.MessageSend(&msg)
-	if err != nil {
-		return common.H_JSON(1, err.Error())
+
+	if msg.GroupID != 0 {
+		userGroups, err := biz.UserGroupListByGroupID(msg.GroupID)
+		if err != nil {
+			return common.H_JSON(1, err.Error())
+		}
+		for _, ug := range userGroups {
+			msg.ToUserID = ug.UserID
+			if err = biz.MessageSend(&msg); err != nil {
+				return common.H_JSON(1, err.Error())
+			}
+			if toConn, ok := clients.Load(ug.UserID); ok {
+				toConn.(*websocket.Conn).WriteJSON(msg)
+			}
+		}
+	} else {
+		if err = biz.MessageSend(&msg); err != nil {
+			return common.H_JSON(1, err.Error())
+		}
+		if toConn, ok := clients.Load(msg.ToUserID); ok {
+			toConn.(*websocket.Conn).WriteJSON(msg)
+		}
 	}
 
 	return common.H_JSON(0, msg)

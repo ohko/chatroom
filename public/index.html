@@ -85,7 +85,6 @@
 		]
 		let wsArr = [null, null]
 		let GroupID = 0
-		let msgID = [{}, {}]
 
 		function onMessage(x) {
 			try {
@@ -101,9 +100,11 @@
 					}
 					if (msg.GroupID) {
 						let els = document.querySelectorAll(`[name=group]`)
-						if (!msgID[msg.MessageID]) {
-							msgID[msg.MessageID] = msg.MessageID
-							for (let i = 0; i < els.length; i++) {
+						for (let i = 0; i < els.length; i++) {
+							if (i == 0 && index == i && msg.FromUserID != msg.ToUserID) {
+								els[i].value += fromUser.RealName + ":" + msg.Content + "\n"
+							}
+							if (i == 1 && index == i && msg.FromUserID != msg.ToUserID) {
 								els[i].value += fromUser.RealName + ":" + msg.Content + "\n"
 							}
 						}

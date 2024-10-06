@@ -51,20 +51,14 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			}
 			conn.WriteJSON(WSMsg{Type: "bind", No: 0, Data: "success"})
 		case "text":
+			msg.FromUserID = fromUserID
 			info := config.TableMessage{
 				Type:       msg.Type,
-				FromUserID: fromUserID,
+				FromUserID: msg.FromUserID,
 				ToUserID:   msg.ToUserID,
 				GroupID:    msg.GroupID,
 				Content:    msg.Content,
-				CreateTime: time.Now(),
 			}
-			if err := biz.MessageSend(&info); err != nil {
-				conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
-				break
-			}
-			msg.FromUserID = fromUserID
-			msg.MessageID = info.MessageID
 			if msg.GroupID != 0 {
 				userGroups, err := biz.UserGroupListByGroupID(msg.GroupID)
 				if err != nil {
@@ -72,13 +66,22 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 					break
 				}
 				for _, ug := range userGroups {
+					info.ToUserID = ug.UserID
+					if err := biz.MessageSend(&info); err != nil {
+						conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
+						break
+					}
 					if toConn, ok := clients.Load(ug.UserID); ok {
-						toConn.(*websocket.Conn).WriteJSON(msg)
+						toConn.(*websocket.Conn).WriteJSON(info)
 					}
 				}
 			} else {
+				if err := biz.MessageSend(&info); err != nil {
+					conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
+					break
+				}
 				if toConn, ok := clients.Load(msg.ToUserID); ok {
-					toConn.(*websocket.Conn).WriteJSON(msg)
+					toConn.(*websocket.Conn).WriteJSON(info)
 				}
 			}
 		}

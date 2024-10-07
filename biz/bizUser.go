@@ -138,11 +138,6 @@ func UserDelete(id int) error {
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 
-	user := &config.TableUser{UserID: id}
-	if err := tx.Delete(&user).Error; err != nil {
-		return err
-	}
-
 	userGroup := config.TableUserGroup{UserID: id}
 	if err := tx.Where(&userGroup).Delete(&userGroup).Error; err != nil {
 		return err
@@ -154,6 +149,11 @@ func UserDelete(id int) error {
 	}
 	message2 := config.TableMessage{FromUserID: id}
 	if err := tx.Where(&message2).Delete(&message2).Error; err != nil {
+		return err
+	}
+
+	user := &config.TableUser{UserID: id}
+	if err := tx.Delete(&user).Error; err != nil {
 		return err
 	}
 

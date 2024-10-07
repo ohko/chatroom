@@ -94,11 +94,6 @@ func GroupDelete(id int) error {
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 
-	group := config.TableGroup{GroupID: id}
-	if err := tx.Delete(&group).Error; err != nil {
-		return err
-	}
-
 	userGroup := config.TableUserGroup{GroupID: id}
 	if err := tx.Where(&userGroup).Delete(&userGroup).Error; err != nil {
 		return err
@@ -106,6 +101,11 @@ func GroupDelete(id int) error {
 
 	message := config.TableMessage{GroupID: id}
 	if err := tx.Where(&message).Delete(&message).Error; err != nil {
+		return err
+	}
+
+	group := config.TableGroup{GroupID: id}
+	if err := tx.Delete(&group).Error; err != nil {
 		return err
 	}
 

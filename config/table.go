@@ -30,7 +30,7 @@ type TableUserGroup struct {
 	UserID      int       `gorm:"user_id;uniqueIndex:ugunique"`
 	GroupID     int       `gorm:"group_id;uniqueIndex:ugunique"`
 	JoinTime    time.Time `gorm:"join_time"`
-	Unread      int       `gorm:"unread;comment:unread message number"`
+	// Unread      int       `gorm:"unread;comment:unread message number"`
 
 	User  TableUser  `gorm:"references:UserID"`
 	Group TableGroup `gorm:"references:GroupID"`

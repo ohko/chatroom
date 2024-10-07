@@ -47,6 +47,15 @@
 			<figcaption>User List</figcaption>
 			<div id="userList"></div>
 		</fieldset>
+
+		<fieldset class="box">
+			<figcaption>Chat3: selected</figcaption>
+			<textarea rows="10" id="sample2"></textarea>
+			<form onsubmit="return send(this,2)">
+				<input placeholder="content" name="Content" value="Hello3">
+				<input type="submit">
+			</form>
+		</fieldset>
 	</div>
 	<hr>
 	<div class="boxs">
@@ -72,6 +81,15 @@
 			<figcaption>Group List</figcaption>
 			<div id="groupList"></div>
 		</fieldset>
+
+		<fieldset class="box">
+			<figcaption>Group3: selected</figcaption>
+			<textarea rows="10" name="selected_group"></textarea>
+			<form onsubmit="return send(this,2,1)">
+				<input placeholder="content" name="Content" value="Hello group3">
+				<input type="submit">
+			</form>
+		</fieldset>
 	</div>
 
 	<script>
@@ -80,11 +98,12 @@
 
 		let Token = ""
 		let users = [
-			{ RealName: "User1", Account: "user1", Password: "pass1", Token: "" },
-			{ RealName: "User2", Account: "user2", Password: "pass2", Token: "" },
+			{ RealName: "User1", Account: "user1", Password: "user1", Token: "" },
+			{ RealName: "User2", Account: "user2", Password: "user2", Token: "" },
 		]
 		let wsArr = [null, null]
 		let GroupID = 0
+		let SelectedGroupID = 0
 
 		function onMessage(x) {
 			try {
@@ -99,17 +118,21 @@
 						if (users[i].UserID == msg.ToUserID) index = i
 					}
 					if (msg.GroupID) {
-						let els = document.querySelectorAll(`[name=group]`)
-						for (let i = 0; i < els.length; i++) {
-							if (i == 0 && index == i && msg.FromUserID != msg.ToUserID) {
-								els[i].value += fromUser.RealName + ":" + msg.Content + "\n"
-							}
-							if (i == 1 && index == i && msg.FromUserID != msg.ToUserID) {
-								els[i].value += fromUser.RealName + ":" + msg.Content + "\n"
+						if (msg.GroupID == SelectedGroupID) {
+							if (msg.FromUserID != msg.ToUserID) document.querySelector(`[name=selected_group]`).value += msg.FromUser.RealName + ":" + msg.Content + "\n"
+						} else {
+							let els = document.querySelectorAll(`[name=group]`)
+							for (let i = 0; i < els.length; i++) {
+								if (i == 0 && index == i && msg.FromUserID != msg.ToUserID) {
+									els[i].value += msg.FromUser.RealName + ":" + msg.Content + "\n"
+								}
+								if (i == 1 && index == i && msg.FromUserID != msg.ToUserID) {
+									els[i].value += msg.FromUser.RealName + ":" + msg.Content + "\n"
+								}
 							}
 						}
 					}
-					else document.querySelector(`#sample${index}`).value += fromUser.RealName + ":" + msg.Content + "\n"
+					else document.querySelector(`#sample${index}`).value += msg.FromUser.RealName + ":" + msg.Content + "\n"
 				} else if (msg.Type == "ping") {
 					this.send({ Type: "pong" })
 				}
@@ -175,7 +198,7 @@
 
 				document.querySelector("#userList").innerHTML = ""
 				for (let i = 0; i < x.data.length; i++) {
-					document.querySelector("#userList").innerHTML += `<div id="user${x.data[i]["UserID"]}">${x.data[i]["UserID"]}. ${x.data[i]["Account"]} [<a href="javascript:void(delUser(${x.data[i]["UserID"]}))">DEL</a>]</div>`
+					document.querySelector("#userList").innerHTML += `<div id="user${x.data[i]["UserID"]}">${x.data[i]["UserID"]}. ${x.data[i]["Account"]} [<a href="javascript:void(useUser(${x.data[i]["UserID"]},'${x.data[i]["Account"]}'))">USE</a>] [<a href="javascript:void(delUser(${x.data[i]["UserID"]}))">DEL</a>]</div>`
 					for (let j = 0; j < users.length; j++) {
 						if (users[j].Account == x.data[i].Account) users[j].UserID = x.data[i].UserID
 					}
@@ -198,7 +221,7 @@
 				document.querySelector("#groupList").innerHTML = ""
 				for (let i = 0; i < x.data.length; i++) {
 					if (GroupID == 0) GroupID = x.data[i].GroupID
-					document.querySelector("#groupList").innerHTML += `<div id="group${x.data[i]["GroupID"]}">${x.data[i]["GroupID"]}. ${x.data[i]["GroupName"]} [<a href="javascript:void(delGroup(${x.data[i]["GroupID"]}))">DEL</a>]</div>`
+					document.querySelector("#groupList").innerHTML += `<div id="group${x.data[i]["GroupID"]}">${x.data[i]["GroupID"]}. ${x.data[i]["GroupName"]} [<a href="javascript:void(useGroup(${x.data[i]["GroupID"]}))">USE</a>] [<a href="javascript:void(delGroup(${x.data[i]["GroupID"]}))">DEL</a>]</div>`
 				}
 			})
 		}
@@ -219,6 +242,15 @@
 
 				refreshGroup(token)
 			})
+		}
+
+		function useUser(userID, account) {
+			users.length = 2
+			users.push({ UserID: userID, Account: account, Password: account })
+			login(2)
+		}
+		function useGroup(groupID) {
+			SelectedGroupID = groupID
 		}
 
 		function delUser(userID) {
@@ -247,10 +279,12 @@
 			let ws = wsArr[index]
 			let fromUser = users[index]
 			let toUser = users[index == 1 ? 0 : 1]
+			let groupID = (isGroup && GroupID) ? GroupID : 0
+			if (isGroup && SelectedGroupID) groupID = SelectedGroupID
 			ws.send({
 				Type: "text",
-				ToUserID: toUser.UserID,
-				GroupID: (isGroup && GroupID) ? GroupID : 0,
+				ToUserID: (!isGroup) ? toUser.UserID : 0,
+				GroupID: groupID,
 				Content: o.Content.value
 			})
 			return false

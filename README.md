@@ -14,6 +14,8 @@ https://doc.apipost.net/docs/34ab26f038e5000
 ```shell
 $ go run .
 - or -
+$ go run . -db 'postgres://postgres:postgres@localhost/chatroom?sslmode=disable&TimeZone=Asia/Shanghai'
+- or -
 $ docker run --rm -it -p 8080:8080 -v /tmp/db/:/db/ ohko/chatroom
 ```
 

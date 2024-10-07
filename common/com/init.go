@@ -2,7 +2,6 @@ package com
 
 import (
 	"log"
-	"runtime"
 	"strings"
 	"time"
 
@@ -63,8 +62,8 @@ func NewDB(dbPath string) (*gorm.DB, error) {
 		log.Fatal(err)
 	}
 
-	if runtime.GOOS == "darwin" {
-		return db.Debug(), nil
-	}
+	// if runtime.GOOS == "darwin" {
+	// 	return db.Debug(), nil
+	// }
 	return db, nil
 }

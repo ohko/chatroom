@@ -76,7 +76,7 @@ func SendMessage(info *config.TableMessage) error {
 
 func PingDeamon() {
 	for {
-		time.Sleep(time.Second * 15)
+		time.Sleep(time.Second * 30)
 		clients.Range(func(key, value any) bool {
 			if err := value.(*websocket.Conn).WriteJSON(WSMsg{Type: "ping"}); err != nil {
 				clients.Delete(key)

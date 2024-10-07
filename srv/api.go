@@ -85,16 +85,14 @@ func (Api) Login(ctx *config.Context, w http.ResponseWriter, r *http.Request) *c
 		return common.H_JSON(1, err.Error())
 	}
 
-	token := Token{
+	token, err := enToken(&Token{
 		UserID: info.UserID,
-	}
-	result, err := enToken(&token)
+	})
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
-	return common.H_JSON(0, map[string]any{
-		"Token": result,
-	})
+	info.Token = token
+	return common.H_JSON(0, info)
 }
 
 func (Api) UserUpdate(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {

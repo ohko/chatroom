@@ -13,6 +13,8 @@ type TableUser struct {
 	LastLoginTime time.Time `gorm:"last_login_time"`
 	LastLoginIP   string    `gorm:"last_login_ip"`
 	RegisterIP    string    `gorm:"register_ip"`
+
+	Token string `gorm:"-"`
 }
 
 type TableGroup struct {

@@ -62,6 +62,8 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			if err := SendMessage(&info); err != nil {
 				conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
 			}
+		case "addGroup": // TODO
+		case "online": // TODO
 		}
 	}
 }

@@ -31,6 +31,9 @@ type TableUserGroup struct {
 	GroupID     int       `gorm:"group_id;uniqueIndex:ugunique"`
 	JoinTime    time.Time `gorm:"join_time"`
 	Unread      int       `gorm:"unread;comment:unread message number"`
+
+	User  TableUser  `gorm:"references:UserID"`
+	Group TableGroup `gorm:"references:GroupID"`
 }
 
 type TableMessage struct {
@@ -43,4 +46,6 @@ type TableMessage struct {
 	IsRead     int       `gorm:"is_read;comment:0=normal/1=read"`
 	IsUndo     int       `gorm:"is_undo;comment:0=normal/1=undo"`
 	CreateTime time.Time `gorm:"create_time"`
+
+	FromUser TableUser `gorm:"foreignKey:FromUserID"`
 }

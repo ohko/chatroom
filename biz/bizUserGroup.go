@@ -14,7 +14,7 @@ func UserGroupList(userID int) (list []config.TableUserGroup, err error) {
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 
-	err = tx.Where(&config.TableUserGroup{UserID: userID}).Find(&list).Error
+	err = tx.Preload("User").Preload("Group").Where(&config.TableUserGroup{UserID: userID}).Find(&list).Error
 	return
 }
 
@@ -28,7 +28,7 @@ func UserGroupListByGroupID(groupID int) (list []config.TableUserGroup, err erro
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 
-	err = tx.Where(&config.TableUserGroup{GroupID: groupID}).Find(&list).Error
+	err = tx.Preload("User").Preload("Group").Where(&config.TableUserGroup{GroupID: groupID}).Find(&list).Error
 	return
 }
 

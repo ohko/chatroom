@@ -15,7 +15,7 @@ import (
 var publicFolder embed.FS
 
 var (
-	dbPath = flag.String("db", "./db/chatroom.db", "database file path")
+	dbPath = flag.String("db", "./db/chatroom.db", "database file path,eg: postgres://postgres:postgres@localhost/chatroom?sslmode=disable&TimeZone=Asia/Shanghai")
 	addr   = flag.String("s", ":8080", "server address")
 )
 

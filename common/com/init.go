@@ -8,6 +8,7 @@ import (
 
 	"github.com/glebarez/sqlite"
 	"github.com/ohko/chatroom/config"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 	"gorm.io/gorm/schema"
 	"gorm.io/plugin/dbresolver"
@@ -36,7 +37,13 @@ func NewDB(dbPath string) (*gorm.DB, error) {
 		},
 		SkipDefaultTransaction: true}
 
-	db, err := gorm.Open(sqlite.Open(dbPath), &options)
+	var dsn gorm.Dialector
+	if strings.HasPrefix(dbPath, "postgres://") {
+		dsn = postgres.Open(dbPath)
+	} else {
+		dsn = sqlite.Open(dbPath)
+	}
+	db, err := gorm.Open(dsn, &options)
 	if err != nil {
 		return nil, err
 	}
@@ -48,9 +55,9 @@ func NewDB(dbPath string) (*gorm.DB, error) {
 		SetMaxOpenConns(200))
 
 	if err := db.AutoMigrate(
+		&config.TableUserGroup{},
 		&config.TableGroup{},
 		&config.TableUser{},
-		&config.TableUserGroup{},
 		&config.TableMessage{},
 	); err != nil {
 		log.Fatal(err)

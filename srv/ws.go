@@ -45,7 +45,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		case "ping":
 			conn.WriteJSON(WSMsg{Type: "pong"})
 		case "bind":
-			if token, err := checkToken(msg.Token); err == nil {
+			if token, err := deToken(msg.Token); err == nil {
 				fromUserID = token.UserID
 				clients.Store(token.UserID, conn)
 			}
@@ -59,16 +59,19 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 				GroupID:    msg.GroupID,
 				Content:    msg.Content,
 			}
-			if err := biz.MessageSend(&info, func(userID int, info *config.TableMessage) {
-				if toConn, ok := clients.Load(userID); ok {
-					toConn.(*websocket.Conn).WriteJSON(info)
-				}
-			}); err != nil {
+			if err := SendMessage(&info); err != nil {
 				conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
-				break
 			}
 		}
 	}
+}
+
+func SendMessage(info *config.TableMessage) error {
+	return biz.MessageSend(info, func(userID int, info *config.TableMessage) {
+		if toConn, ok := clients.Load(userID); ok {
+			toConn.(*websocket.Conn).WriteJSON(info)
+		}
+	})
 }
 
 func PingDeamon() {

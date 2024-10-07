@@ -22,7 +22,7 @@ func GroupListByID(ids []int) (list []config.TableGroup, err error) {
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 
-	err = tx.Where("GroupID IN ?", ids).Find(&list).Error
+	err = tx.Where("group_id IN ?", ids).Find(&list).Error
 	return
 }
 

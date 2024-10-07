@@ -1,6 +1,8 @@
 package config
 
-import "context"
+import (
+	"context"
+)
 
 type Context struct {
 	Ctx      context.Context
@@ -18,4 +20,13 @@ type ResultData struct {
 	Type     string
 	Template []string
 	Data     any
+}
+
+type Contact struct {
+	UserID      int
+	GroupID     int
+	Account     string
+	RealName    string
+	Avatar      string
+	LastMessage *TableMessage `gorm:"-"`
 }

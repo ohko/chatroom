@@ -8,62 +8,49 @@ import (
 	"github.com/ohko/chatroom/config"
 )
 
-func MessageContacts(userID int) (list []map[string]any, err error) {
+func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 	config.DBLock.Lock()
 	defer config.DBLock.Unlock()
 
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 
-	var users []map[string]any
-	if err = tx.Raw(`SELECT user_id AS ID,account AS Name,avatar AS Avatar, 0 AS IsGroup FROM table_user`).Find(&users).Error; err != nil {
+	var users []config.Contact
+	if err = tx.Raw(`SELECT user_id, account, real_name, avatar FROM table_user`).Find(&users).Error; err != nil {
 		return
 	}
 
-	var groups []map[string]any
-	if err = tx.Raw(`SELECT g.group_id AS ID,group_name AS Name,avatar AS Avatar, user_id AS UserID, 1 AS IsGroup
+	var groups []config.Contact
+	if err = tx.Raw(`SELECT g.group_id AS group_id,group_name AS account, avatar, user_id
 FROM table_user_group ug
 LEFT JOIN table_group g ON g.group_id=ug.group_id
 WHERE user_id=?`, userID).Find(&groups).Error; err != nil {
 		return
 	}
 
-	var msgs []map[string]any
-	if err = tx.Raw(`SELECT MAX(message_id),* FROM table_message
-WHERE to_user_id=?
-GROUP BY from_user_id,to_user_id,group_id`, userID).Find(&msgs).Error; err != nil {
+	var msgs []config.TableMessage
+	if err = tx.Preload("FromUser").Select(`MAX(message_id),*`).Where(`to_user_id=?`, userID).Group("message_id").Group("from_user_id").Group("to_user_id").Group("group_id").Find(&msgs).Error; err != nil {
 		return
 	}
-	msgsIndex := map[any]map[string]any{}
+	msgsIndex := map[any]config.TableMessage{}
 	for _, m := range msgs {
-		if m["group_id"].(int64) == 0 {
-			msgsIndex[fmt.Sprintf("0::%v", m["from_user_id"])] = m
+		if m.GroupID == 0 {
+			msgsIndex[fmt.Sprintf("0::%v", m.FromUserID)] = m
 		} else {
-			msgsIndex[fmt.Sprintf("%v::%v", m["group_id"], m["to_user_id"])] = m
+			msgsIndex[fmt.Sprintf("%v::%v", m.GroupID, m.ToUserID)] = m
 		}
 	}
 	for i, u := range users {
-		key := fmt.Sprintf("0::%v", u["ID"])
-		message_id, content, is_read, message_time := 0, "", 0, time.Unix(0, 0)
+		key := fmt.Sprintf("0::%v", u.UserID)
 		if m, ok := msgsIndex[key]; ok {
-			message_id, content, is_read, message_time = int(m["message_id"].(int64)), m["content"].(string), int(m["is_read"].(int64)), m["create_time"].(time.Time)
+			users[i].LastMessage = &m
 		}
-		users[i]["LastMessageID"] = message_id
-		users[i]["LastMessageContent"] = content
-		users[i]["LastMessageTime"] = message_time
-		users[i]["IsRead"] = is_read
 	}
 	for i, g := range groups {
-		key := fmt.Sprintf("%v::%v", g["ID"], g["UserID"])
-		message_id, content, is_read, message_time := 0, "", 0, time.Unix(0, 0)
+		key := fmt.Sprintf("%v::%v", g.GroupID, g.UserID)
 		if m, ok := msgsIndex[key]; ok {
-			message_id, content, is_read, message_time = int(m["message_id"].(int64)), m["content"].(string), int(m["is_read"].(int64)), m["create_time"].(time.Time)
+			groups[i].LastMessage = &m
 		}
-		groups[i]["LastMessageID"] = message_id
-		groups[i]["LastMessageContent"] = content
-		groups[i]["LastMessageTime"] = message_time
-		groups[i]["IsRead"] = is_read
-		delete(groups[i], "UserID")
 	}
 
 	list = append(users, groups...)
@@ -78,9 +65,9 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 	defer tx.Rollback()
 
 	if groupID != 0 {
-		err = tx.Where("group_id=?", groupID).Offset(offset).Limit(limit).Find(&list).Error
+		err = tx.Preload("FromUser").Where("group_id=?", groupID).Offset(offset).Limit(limit).Find(&list).Error
 	} else {
-		err = tx.Where("group_id=0 AND ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?))", FromUserID, ToUserID, ToUserID, FromUserID).Offset(offset).Limit(limit).Find(&list).Error
+		err = tx.Preload("FromUser").Where("group_id=0 AND ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?))", FromUserID, ToUserID, ToUserID, FromUserID).Offset(offset).Limit(limit).Find(&list).Error
 	}
 
 	ids := []int{}
@@ -142,6 +129,10 @@ func messageSend(info *config.TableMessage) error {
 	defer tx.Rollback()
 
 	if err := tx.Create(&info).Error; err != nil {
+		return err
+	}
+
+	if err := tx.First(&info.FromUser, info.FromUserID).Error; err != nil {
 		return err
 	}
 

@@ -20,6 +20,17 @@ func UserList() (list []config.TableUser, err error) {
 	return
 }
 
+func UserListByID(ids []int) (list []config.TableUser, err error) {
+	config.DBLock.Lock()
+	defer config.DBLock.Unlock()
+
+	tx := config.DB.Begin()
+	defer tx.Rollback()
+
+	err = tx.Where("user_id IN ?", ids).Find(&list).Error
+	return
+}
+
 func UserDetail(UserID int) (info config.TableUser, err error) {
 	config.DBLock.Lock()
 	defer config.DBLock.Unlock()

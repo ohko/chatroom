@@ -106,7 +106,7 @@ func (Api) UserUpdate(ctx *config.Context, w http.ResponseWriter, r *http.Reques
 		return common.H_JSON(1, err.Error())
 	}
 
-	token, err := checkToken(r.Header.Get(config.TokenName))
+	token, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -142,7 +142,7 @@ func (Api) UserDelete(ctx *config.Context, w http.ResponseWriter, r *http.Reques
 }
 
 func (Api) UserList(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {
-	_, err := checkToken(r.Header.Get(config.TokenName))
+	_, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -164,7 +164,7 @@ func (Api) GroupCreate(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 		return common.H_JSON(1, err.Error())
 	}
 
-	token, err := checkToken(r.Header.Get(config.TokenName))
+	token, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -187,7 +187,7 @@ func (Api) GroupUpdate(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 		return common.H_JSON(1, err.Error())
 	}
 
-	_, err := checkToken(r.Header.Get(config.TokenName))
+	_, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -231,7 +231,7 @@ func (Api) GroupJoinUsers(ctx *config.Context, w http.ResponseWriter, r *http.Re
 		return common.H_JSON(1, err.Error())
 	}
 
-	_, err := checkToken(r.Header.Get(config.TokenName))
+	_, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -252,7 +252,7 @@ func (Api) GroupRemoveUsers(ctx *config.Context, w http.ResponseWriter, r *http.
 		return common.H_JSON(1, err.Error())
 	}
 
-	_, err := checkToken(r.Header.Get(config.TokenName))
+	_, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -265,7 +265,7 @@ func (Api) GroupRemoveUsers(ctx *config.Context, w http.ResponseWriter, r *http.
 }
 
 func (Api) GroupList(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {
-	token, err := checkToken(r.Header.Get(config.TokenName))
+	token, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -289,7 +289,7 @@ func (Api) GroupList(ctx *config.Context, w http.ResponseWriter, r *http.Request
 }
 
 func (Api) GroupListAll(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {
-	_, err := checkToken(r.Header.Get(config.TokenName))
+	_, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -310,7 +310,7 @@ func (Api) GroupUsers(ctx *config.Context, w http.ResponseWriter, r *http.Reques
 		return common.H_JSON(1, err.Error())
 	}
 
-	_, err := checkToken(r.Header.Get(config.TokenName))
+	_, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -334,7 +334,7 @@ func (Api) MessageSend(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 		return common.H_JSON(1, err.Error())
 	}
 
-	token, err := checkToken(r.Header.Get(config.TokenName))
+	token, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -369,7 +369,7 @@ func (Api) MessageList(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 		return common.H_JSON(1, err.Error())
 	}
 
-	token, err := checkToken(r.Header.Get(config.TokenName))
+	token, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
@@ -382,18 +382,25 @@ func (Api) MessageList(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 	return common.H_JSON(0, list)
 }
 
-func (Api) MessageContacts(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {
-	token, err := checkToken(r.Header.Get(config.TokenName))
+func (Api) ContactsAndLastMessage(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {
+	token, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
 
-	list, err := biz.MessageContacts(token.UserID)
+	list, err := biz.ContactsAndLastMessage(token.UserID)
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}
 
 	return common.H_JSON(0, list)
+}
+
+func GenerateToken(userID int) (string, error) {
+	token := Token{
+		UserID: userID,
+	}
+	return enToken(&token)
 }
 
 func enToken(token *Token) (string, error) {
@@ -405,7 +412,7 @@ func enToken(token *Token) (string, error) {
 	return hex.EncodeToString(result), nil
 }
 
-func checkToken(token string) (*Token, error) {
+func deToken(token string) (*Token, error) {
 	if token == "" {
 		return nil, errors.New("need token")
 	}

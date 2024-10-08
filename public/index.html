@@ -17,6 +17,17 @@
 		textarea {
 			width: 100%;
 		}
+
+		.one {
+			width: 150px;
+			border: 1px solid #CCC;
+			cursor: pointer;
+		}
+
+		.contacts {
+			max-height: 200px;
+			overflow: scroll;
+		}
 	</style>
 </head>
 
@@ -58,7 +69,10 @@
 		<fieldset class="box" name="user_0">
 			<div style="float: right;" onclick="this.parentNode.remove()">[X]</div>
 			<figcaption>Chat</figcaption>
-			<textarea rows="10"></textarea>
+			<div style="display: flex;">
+				<div name="contacts"></div>
+				<textarea rows="10"></textarea>
+			</div>
 			<form onsubmit="return sendMessage(this)">
 				<input name="index" value="0" type="hidden">
 				<input name="Token" value="" type="hidden">
@@ -145,7 +159,7 @@
 				for (let i = 0; i < list.length; i++) {
 					f.ToUserID.innerHTML += `<option value="${list[i]["UserID"]}">${list[i]["UserID"]}: ${list[i]["Account"]}</option>`
 					document.querySelector("#quick").innerHTML += `<option>${list[i]["Account"]}</option>`
-					document.querySelector("#users").innerHTML += `<div id="user${list[i]["UserID"]}">${list[i]["UserID"]}. ${list[i]["Account"]}[<a href="javascript:void(delUser(${list[i]["UserID"]}))">DEL</a>]</a>`
+					document.querySelector("#users").innerHTML += `<div id="user${list[i]["UserID"]}">${list[i]["UserID"]}. ${list[i]["Account"]}[<a href="javascript:void(delUser(${list[i]["UserID"]}))">DEL</a>]</div>`
 				}
 			})
 		}
@@ -160,9 +174,25 @@
 				f.GroupID.innerHTML = ""
 				document.querySelector("#groups").innerHTML = ""
 				let list = x.data.sort((x, y) => { return x.GroupID < y.GroupID ? -1 : 1 })
-				for (let i = 0; i < x.data.length; i++) {
-					f.GroupID.innerHTML += `<option value="${x.data[i]["GroupID"]}">${x.data[i]["GroupID"]}. ${x.data[i]["GroupName"]}</option>`
-					document.querySelector("#groups").innerHTML += `<div id="group${list[i]["GroupID"]}">${list[i]["GroupID"]}. ${list[i]["GroupName"]}[<a href="javascript:void(delGroup(${list[i]["GroupID"]}))">DEL</a>]</a>`
+				for (let i = 0; i < list.length; i++) {
+					f.GroupID.innerHTML += `<option value="${list[i]["GroupID"]}">${list[i]["GroupID"]}. ${list[i]["GroupName"]}</option>`
+					document.querySelector("#groups").innerHTML += `<div id="group${list[i]["GroupID"]}">${list[i]["GroupID"]}. ${list[i]["GroupName"]}[<a href="javascript:void(delGroup(${list[i]["GroupID"]}))">DEL</a>]</div>`
+				}
+			})
+		}
+
+		function refreshContactsAndLastMessage(token, dom) {
+			fetch(apiURL + "/ContactsAndLastMessage", {
+				method: "POST", headers: { "Content-Type": "application/json", "Token": token },
+				body: JSON.stringify({}),
+			}).then(x => x.json()).then(x => {
+				if (x.no != 0) return document.querySelector("#log").innerHTML += `[ContactsAndLastMessage] ${x.data}\n`
+
+				dom.innerHTML = ""
+				let list = x.data.sort((x, y) => { return x.GroupID < y.GroupID ? -1 : (x.UserID > y.UserID ? -1 : 1) })
+				for (let i = 0; i < list.length; i++) {
+					if (list[i].GroupID == 0) dom.innerHTML += `<div class="one">U${list[i]["UserID"]}. ${list[i]["Account"]}</div>`
+					else dom.innerHTML += `<div class="one">G${list[i]["GroupID"]}. ${list[i]["GroupName"]}</div>`
 				}
 			})
 		}
@@ -262,6 +292,7 @@
 				tpl.name = "user_" + info.UserID
 				refreshUserList(info.Token, tpl.querySelector("form"))
 				refreshGroup(info.Token, tpl.querySelector("form"))
+				refreshContactsAndLastMessage(info.Token, tpl.querySelector("[name=contacts]"))
 				boxs.append(tpl)
 				this.index = index
 				this.token = info.Token

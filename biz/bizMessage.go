@@ -16,15 +16,19 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 	defer tx.Rollback()
 
 	var users []config.Contact
-	if err = tx.Raw(`SELECT user_id, account, real_name, avatar FROM table_user`).Find(&users).Error; err != nil {
+	if err = tx.Model(&config.TableUser{}).
+		Select(`user_id, account, real_name, avatar`).
+		Where("user_id!=?", userID).
+		Find(&users).Error; err != nil {
 		return
 	}
 
 	var groups []config.Contact
-	if err = tx.Raw(`SELECT g.group_id AS group_id,group_name AS account, avatar, user_id
-FROM table_user_group ug
-LEFT JOIN table_group g ON g.group_id=ug.group_id
-WHERE user_id=?`, userID).Find(&groups).Error; err != nil {
+	if err = tx.Model(&config.TableUserGroup{}).
+		Select(`g.group_id AS group_id,group_name, avatar, user_id`).
+		Joins(`LEFT JOIN table_group g ON g.group_id=table_user_group.group_id`).
+		Where(`user_id=?`, userID).
+		Find(&groups).Error; err != nil {
 		return
 	}
 
@@ -51,6 +55,7 @@ WHERE user_id=?`, userID).Find(&groups).Error; err != nil {
 		if m, ok := msgsIndex[key]; ok {
 			groups[i].LastMessage = &m
 		}
+		groups[i].UserID = 0
 	}
 
 	list = append(users, groups...)

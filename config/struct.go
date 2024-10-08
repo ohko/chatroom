@@ -27,6 +27,7 @@ type Contact struct {
 	GroupID     int
 	Account     string
 	RealName    string
+	GroupName   string
 	Avatar      string
 	LastMessage *TableMessage `gorm:"-"`
 }

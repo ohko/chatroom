@@ -63,6 +63,24 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 	return
 }
 
+func ContactsAndLastMessageByAccount(account string) (list []config.Contact, err error) {
+	info := config.TableUser{Account: account}
+
+	if err = func() error {
+		config.DBLock.Lock()
+		defer config.DBLock.Unlock()
+
+		tx := config.DB.Begin()
+		defer tx.Rollback()
+
+		return tx.Where(&info).First(&info).Error
+	}(); err != nil {
+		return
+	}
+
+	return ContactsAndLastMessage(info.UserID)
+}
+
 func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []config.TableMessage, err error) {
 	config.DBLock.Lock()
 	defer config.DBLock.Unlock()

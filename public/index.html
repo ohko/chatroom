@@ -115,8 +115,8 @@
 
 
 	<script>
-		const apiURL = "http://127.0.0.1:8080/im"
-		const wsURL = "ws://127.0.0.1:8080/ws"
+		const apiURL = `//${location.host}/im`
+		const wsURL = `${location.protocol == 'https:' ? 'wss' : 'ws'}://${location.host}/ws`
 		let wsArr = []
 
 		function login(f, quick) {

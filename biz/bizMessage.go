@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/ohko/chatroom/common"
 	"github.com/ohko/chatroom/config"
 )
 
@@ -89,7 +88,7 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 	defer tx.Rollback()
 
 	if groupID != 0 {
-		err = tx.Preload("FromUser").Where("group_id=?", groupID).Order("message_id DESC").Group("unique_id").Offset(offset).Limit(limit).Find(&list).Error
+		err = tx.Preload("FromUser").Where("group_id=?", groupID).Order("message_id DESC").Offset(offset).Limit(limit).Find(&list).Error
 	} else {
 		err = tx.Preload("FromUser").Where("group_id=0 AND ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?))", FromUserID, ToUserID, ToUserID, FromUserID).Order("message_id DESC").Offset(offset).Limit(limit).Find(&list).Error
 	}
@@ -118,26 +117,18 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 }
 
 func MessageSend(info *config.TableMessage, wsToUserFunc func(userID int, info *config.TableMessage)) error {
-	info.UniqueID = common.GenerateNonce(32)
-	if info.GroupID != 0 {
-		userGroups, err := UserGroupListByGroupID(info.GroupID)
-		if err != nil {
-			return err
-		}
-		for _, ug := range userGroups {
-			info.ToUserID = ug.UserID
-			if err := messageSend(info); err != nil {
-				return err
+	if err := messageSend(info); err != nil {
+		return err
+	}
+	if wsToUserFunc != nil {
+		if info.GroupID != 0 {
+			if userGroups, err := UserGroupListByGroupID(info.GroupID); err == nil {
+				for _, ug := range userGroups {
+					info.ToUserID = ug.UserID
+					wsToUserFunc(ug.UserID, info)
+				}
 			}
-			if wsToUserFunc != nil {
-				wsToUserFunc(ug.UserID, info)
-			}
-		}
-	} else {
-		if err := messageSend(info); err != nil {
-			return err
-		}
-		if wsToUserFunc != nil {
+		} else {
 			wsToUserFunc(info.ToUserID, info)
 		}
 	}
@@ -145,8 +136,11 @@ func MessageSend(info *config.TableMessage, wsToUserFunc func(userID int, info *
 }
 
 func messageSend(info *config.TableMessage) error {
-	if info.FromUserID == 0 || info.ToUserID == 0 || info.Type == "" || info.Content == "" {
-		return errors.New("from_user_id/to_user_id/type/content is empty")
+	if info.FromUserID == 0 || info.Type == "" || info.Content == "" {
+		return errors.New("from_user_id/type/content is empty")
+	}
+	if info.ToUserID == 0 && info.GroupID == 0 {
+		return errors.New("group_id or to_user_id both empty")
 	}
 	config.DBLock.Lock()
 	defer config.DBLock.Unlock()

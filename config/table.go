@@ -43,7 +43,6 @@ type TableMessage struct {
 	FromUserID int       `gorm:"from_user_id;index"`
 	ToUserID   int       `gorm:"to_user_id;index"`
 	GroupID    int       `gorm:"group_id;index;comment:0=normal/x=group"`
-	UniqueID   string    `gorm:"unique_id;index"`
 	Type       string    `gorm:"'type';comment:text/image"`
 	Content    string    `gorm:"content"`
 	IsRead     int       `gorm:"is_read;comment:0=normal/1=read"`

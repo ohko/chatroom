@@ -18,7 +18,10 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin:     func(r *http.Request) bool { return true },
 }
 
-var clients sync.Map
+var (
+	clients              sync.Map
+	hookAfterRecvMessage HookAfterRecvMessage
+)
 
 func wsHandler(w http.ResponseWriter, r *http.Request) {
 	conn, err := upgrader.Upgrade(w, r, nil)
@@ -62,8 +65,14 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			if err := SendMessage(&info); err != nil {
 				conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
 			}
+			msg.MessageID = info.MessageID
 		case "addGroup": // TODO
 		case "online": // TODO
+		}
+
+		msg.CreateTime = time.Now()
+		if hookAfterRecvMessage != nil {
+			hookAfterRecvMessage(msg)
 		}
 	}
 }
@@ -92,6 +101,10 @@ func HandleWS(path string) {
 	http.HandleFunc(path, wsHandler)
 }
 
+func SetHookAfterRecvMessage(fun HookAfterRecvMessage) {
+	hookAfterRecvMessage = fun
+}
+
 type WSMsg struct {
 	Type       string // ping/pong/text/image
 	Token      string `json:",omitempty"` // type=bind
@@ -102,4 +115,7 @@ type WSMsg struct {
 	Content    string `json:",omitempty"`
 	No         int    `json:",omitempty"`
 	Data       string `json:",omitempty"`
+	CreateTime time.Time
 }
+
+type HookAfterRecvMessage func(msg WSMsg)

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ohko/chatroom/common"
 	"github.com/ohko/chatroom/config"
 )
 
@@ -70,16 +71,14 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 	defer tx.Rollback()
 
 	if groupID != 0 {
-		err = tx.Preload("FromUser").Where("group_id=?", groupID).Offset(offset).Limit(limit).Find(&list).Error
+		err = tx.Preload("FromUser").Where("group_id=?", groupID).Order("message_id DESC").Group("unique_id").Offset(offset).Limit(limit).Find(&list).Error
 	} else {
-		err = tx.Preload("FromUser").Where("group_id=0 AND ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?))", FromUserID, ToUserID, ToUserID, FromUserID).Offset(offset).Limit(limit).Find(&list).Error
+		err = tx.Preload("FromUser").Where("group_id=0 AND ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?))", FromUserID, ToUserID, ToUserID, FromUserID).Order("message_id DESC").Offset(offset).Limit(limit).Find(&list).Error
 	}
 
 	ids := []int{}
 	for _, l := range list {
-		if l.ToUserID == ToUserID && l.IsRead == 0 {
-			ids = append(ids, l.MessageID)
-		}
+		ids = append(ids, l.MessageID)
 	}
 
 	if len(ids) != 0 {
@@ -90,11 +89,18 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 		return
 	}
 
+	reversed := make([]config.TableMessage, len(list))
+	for i := range list {
+		reversed[i] = list[len(list)-1-i]
+	}
+	list = reversed
+
 	tx.Commit()
 	return
 }
 
 func MessageSend(info *config.TableMessage, wsToUserFunc func(userID int, info *config.TableMessage)) error {
+	info.UniqueID = common.GenerateNonce(32)
 	if info.GroupID != 0 {
 		userGroups, err := UserGroupListByGroupID(info.GroupID)
 		if err != nil {

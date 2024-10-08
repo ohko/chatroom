@@ -8,9 +8,9 @@ import (
 	"strings"
 )
 
-func HandleStatic(indexFile embed.FS) {
+func HandleStatic(path string, indexFile embed.FS) {
 	rootPath := "./public"
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc(path, func(w http.ResponseWriter, r *http.Request) {
 		if runtime.GOOS == "darwin" {
 			if _, err := os.Stat(rootPath + r.URL.Path); os.IsNotExist(err) {
 				http.ServeFile(w, r, rootPath+"/index.html")

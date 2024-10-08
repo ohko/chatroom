@@ -28,7 +28,7 @@ func main() {
 	go srv.PingDeamon()
 	srv.HandleWS("/ws")
 	srv.HandleApiFuncs("/im/")
-	srv.HandleStatic(public.IndexFile)
+	srv.HandleStatic("/", public.IndexFile)
 
 	log.Println("Server listen:", *addr)
 	log.Println(http.ListenAndServe(*addr, nil))

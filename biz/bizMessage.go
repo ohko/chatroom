@@ -23,6 +23,33 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 		return
 	}
 
+	{
+		var msgs []config.TableMessage
+		subQuery := tx.Model(&config.TableMessage{}).Select("*, ROW_NUMBER() OVER (PARTITION BY from_user_id, to_user_id ORDER BY message_id DESC) as rn_user").Where("group_id=0")
+		if err = tx.Preload("FromUser").Table("(?) as a", subQuery).Where(`rn_user=1`).Find(&msgs).Error; err != nil {
+			return
+		}
+		msgsIndex := map[any]config.TableMessage{}
+		for _, m := range msgs {
+			if m.FromUserID <= m.ToUserID {
+				msgsIndex[fmt.Sprintf("0::%v::%v", m.FromUserID, m.ToUserID)] = m
+			} else {
+				msgsIndex[fmt.Sprintf("0::%v::%v", m.ToUserID, m.FromUserID)] = m
+			}
+		}
+		for i, u := range users {
+			key := ""
+			if userID <= u.UserID {
+				key = fmt.Sprintf("0::%v::%v", userID, u.UserID)
+			} else {
+				key = fmt.Sprintf("0::%v::%v", u.UserID, userID)
+			}
+			if m, ok := msgsIndex[key]; ok {
+				users[i].LastMessage = &m
+			}
+		}
+	}
+
 	var groups []config.Contact
 	if err = tx.Model(&config.TableUserGroup{}).
 		Select(`g.group_id AS group_id,group_name, avatar, user_id`).
@@ -32,30 +59,22 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 		return
 	}
 
-	var msgs []config.TableMessage
-	if err = tx.Preload("FromUser").Select(`MAX(message_id),*`).Where(`to_user_id=?`, userID).Group("message_id").Group("from_user_id").Group("to_user_id").Group("group_id").Find(&msgs).Error; err != nil {
-		return
-	}
-	msgsIndex := map[any]config.TableMessage{}
-	for _, m := range msgs {
-		if m.GroupID == 0 {
-			msgsIndex[fmt.Sprintf("0::%v", m.FromUserID)] = m
-		} else {
-			msgsIndex[fmt.Sprintf("%v::%v", m.GroupID, m.ToUserID)] = m
+	{
+		var msgs []config.TableMessage
+		subQuery := tx.Model(&config.TableMessage{}).Select("*, ROW_NUMBER() OVER (PARTITION BY group_id ORDER BY message_id DESC) as rn_group").Where("group_id!=0")
+		if err = tx.Preload("FromUser").Table("(?) as a", subQuery).Where(`rn_group=1`).Find(&msgs).Error; err != nil {
+			return
 		}
-	}
-	for i, u := range users {
-		key := fmt.Sprintf("0::%v", u.UserID)
-		if m, ok := msgsIndex[key]; ok {
-			users[i].LastMessage = &m
+		msgsIndex := map[int]config.TableMessage{}
+		for _, m := range msgs {
+			msgsIndex[m.GroupID] = m
 		}
-	}
-	for i, g := range groups {
-		key := fmt.Sprintf("%v::%v", g.GroupID, g.UserID)
-		if m, ok := msgsIndex[key]; ok {
-			groups[i].LastMessage = &m
+		for i, g := range groups {
+			if m, ok := msgsIndex[g.GroupID]; ok {
+				groups[i].LastMessage = &m
+			}
+			groups[i].UserID = 0
 		}
-		groups[i].UserID = 0
 	}
 
 	list = append(users, groups...)

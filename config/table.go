@@ -50,4 +50,5 @@ type TableMessage struct {
 	CreateTime time.Time `gorm:"create_time"`
 
 	FromUser TableUser `gorm:"foreignKey:FromUserID"`
+	ExtData  string    `gorm:"-"`
 }

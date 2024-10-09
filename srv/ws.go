@@ -66,6 +66,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 				GroupID:    msg.GroupID,
 				Content:    msg.Content,
 				CreateTime: time.Now(),
+				ExtData:    msg.ExtData,
 			}
 			if err := SendMessage(&info); err != nil {
 				conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
@@ -123,6 +124,7 @@ type WSMsg struct {
 	No         int    `json:",omitempty"`
 	Data       string `json:",omitempty"`
 	CreateTime time.Time
+	ExtData    string
 }
 
 type HookAfterRecvMessage func(msg WSMsg)

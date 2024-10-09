@@ -138,7 +138,7 @@
 
 		function sendMessage(f) {
 			let ws = wsArr[f.index.value]
-			let msg = { Type: "text", Content: f.Content.value }
+			let msg = { Type: "text", Content: f.Content.value, ExtData: new Date().getTime().toFixed(0) }
 			if (f.to.value == 0) msg.ToUserID = parseInt(f.ToUserID.value)
 			else if (f.to.value == 1) msg.GroupID = parseInt(f.GroupID.value)
 			ws.send(msg)

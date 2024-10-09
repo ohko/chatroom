@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -19,7 +18,6 @@ var upgrader = websocket.Upgrader{
 }
 
 var (
-	clients              sync.Map
 	hookAfterRecvMessage HookAfterRecvMessage
 )
 
@@ -29,8 +27,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 		return
 	}
+	defer conn.Close()
 
-	conn.WriteJSON(WSMsg{Type: "connected", Data: conn.RemoteAddr().String(), CreateTime: time.Now()})
+	if err := biz.WsSendWelcome(conn); err != nil {
+		log.Println(err)
+		return
+	}
 
 	fromUserID := 0
 
@@ -40,22 +42,24 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		var msg WSMsg
+		var msg config.WSMsg
 		if err = json.Unmarshal(bs, &msg); err != nil {
-			log.Println(err)
+			if err := biz.WsSendError(conn, err); err != nil {
+				return
+			}
 			continue
 		}
 
 		switch msg.Type {
 		case "ping":
-			conn.WriteJSON(WSMsg{Type: "pong", CreateTime: time.Now()})
+			biz.WsSendPong(conn)
 		case "bind":
 			if token, err := deToken(msg.Token); err == nil {
 				fromUserID = token.UserID
-				clients.Store(token.UserID, conn)
-				conn.WriteJSON(WSMsg{Type: "bind", No: 0, Data: "success", CreateTime: time.Now()})
+				biz.WsAddClient(token.UserID, conn)
+				biz.WsSendBind(conn, 0, "success")
 			} else {
-				conn.WriteJSON(WSMsg{Type: "bind", No: 1, Data: "failed", CreateTime: time.Now()})
+				biz.WsSendBind(conn, 1, "failed")
 			}
 		case "text", "image":
 			msg.FromUserID = fromUserID
@@ -68,14 +72,12 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 				CreateTime: time.Now(),
 				ExtData:    msg.ExtData,
 			}
-			if err := SendMessage(&info); err != nil {
-				conn.WriteJSON(WSMsg{Type: msg.Type, No: 1, Data: err.Error()})
+			if err := biz.MessageSend(&info); err != nil {
+				biz.WsSendError(conn, err)
 			}
 			// notify self
-			conn.WriteJSON(info)
+			biz.WsSendMessageByConn(conn, &info)
 			msg.MessageID = info.MessageID
-		case "addGroup": // TODO
-		case "online": // TODO
 		}
 
 		msg.CreateTime = time.Now()
@@ -85,20 +87,13 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func SendMessage(info *config.TableMessage) error {
-	return biz.MessageSend(info, func(userID int, info *config.TableMessage) {
-		if toConn, ok := clients.Load(userID); ok {
-			toConn.(*websocket.Conn).WriteJSON(info)
-		}
-	})
-}
-
 func PingDeamon() {
 	for {
 		time.Sleep(time.Second * 30)
-		clients.Range(func(key, value any) bool {
-			if err := value.(*websocket.Conn).WriteJSON(WSMsg{Type: "ping", CreateTime: time.Now()}); err != nil {
-				clients.Delete(key)
+		biz.WsRange(func(key, value any) bool {
+			if err := biz.WsSendPing(value.(*websocket.Conn)); err != nil {
+				biz.WsRemoveClient(key.(int))
+				value.(*websocket.Conn).Close()
 			}
 			return true
 		})
@@ -113,18 +108,4 @@ func SetHookAfterRecvMessage(fun HookAfterRecvMessage) {
 	hookAfterRecvMessage = fun
 }
 
-type WSMsg struct {
-	Type       string // ping/pong/text/image
-	Token      string `json:",omitempty"` // type=bind
-	MessageID  int    `json:",omitempty"`
-	FromUserID int    `json:",omitempty"`
-	ToUserID   int    `json:",omitempty"`
-	GroupID    int    `json:",omitempty"`
-	Content    string `json:",omitempty"`
-	No         int    `json:",omitempty"`
-	Data       string `json:",omitempty"`
-	CreateTime time.Time
-	ExtData    string
-}
-
-type HookAfterRecvMessage func(msg WSMsg)
+type HookAfterRecvMessage func(msg config.WSMsg)

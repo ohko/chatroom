@@ -8,7 +8,6 @@ import (
 	"reflect"
 	"time"
 
-	"github.com/gorilla/websocket"
 	"github.com/ohko/chatroom/biz"
 	"github.com/ohko/chatroom/common"
 	"github.com/ohko/chatroom/config"
@@ -345,11 +344,7 @@ func (Api) MessageSend(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 		Content:    data.Content,
 	}
 
-	if err = biz.MessageSend(&msg, func(userID int, info *config.TableMessage) {
-		if toConn, ok := clients.Load(userID); ok {
-			toConn.(*websocket.Conn).WriteJSON(info)
-		}
-	}); err != nil {
+	if err = biz.MessageSend(&msg); err != nil {
 		return common.H_JSON(1, err.Error())
 	}
 

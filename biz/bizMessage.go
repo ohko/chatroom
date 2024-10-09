@@ -135,26 +135,7 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 	return
 }
 
-func MessageSend(info *config.TableMessage, wsToUserFunc func(userID int, info *config.TableMessage)) error {
-	if err := messageSend(info); err != nil {
-		return err
-	}
-	if wsToUserFunc != nil {
-		if info.GroupID != 0 {
-			if userGroups, err := UserGroupListByGroupID(info.GroupID); err == nil {
-				for _, ug := range userGroups {
-					info.ToUserID = ug.UserID
-					wsToUserFunc(ug.UserID, info)
-				}
-			}
-		} else {
-			wsToUserFunc(info.ToUserID, info)
-		}
-	}
-	return nil
-}
-
-func messageSend(info *config.TableMessage) error {
+func MessageSend(info *config.TableMessage) error {
 	if info.FromUserID == 0 || info.Type == "" || info.Content == "" {
 		return errors.New("from_user_id/type/content is empty")
 	}
@@ -179,6 +160,17 @@ func messageSend(info *config.TableMessage) error {
 	}
 
 	tx.Commit()
+
+	if info.GroupID != 0 {
+		if userGroups, err := UserGroupListByGroupID(info.GroupID); err == nil {
+			for _, ug := range userGroups {
+				info.ToUserID = ug.UserID
+				WsSendMessageByUserID(info.ToUserID, info)
+			}
+		}
+	} else {
+		WsSendMessageByUserID(info.ToUserID, info)
+	}
 	return nil
 }
 

@@ -50,6 +50,7 @@ func UserGroupjoin(userIDs []int, groupID int) error {
 	}
 
 	tx.Commit()
+	go WsNotifyUserGroupJoin(groupID, userIDs)
 	return nil
 }
 
@@ -70,5 +71,6 @@ func UserGroupRemove(userIDs []int, groupID int) error {
 	}
 
 	tx.Commit()
+	go WsNotifyUserGroupRemove(groupID, userIDs)
 	return nil
 }

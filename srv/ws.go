@@ -57,7 +57,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				conn.WriteJSON(WSMsg{Type: "bind", No: 1, Data: "failed", CreateTime: time.Now()})
 			}
-		case "text":
+		case "text", "image":
 			msg.FromUserID = fromUserID
 			info := config.TableMessage{
 				Type:       msg.Type,
@@ -69,7 +69,7 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 				ExtData:    msg.ExtData,
 			}
 			if err := SendMessage(&info); err != nil {
-				conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
+				conn.WriteJSON(WSMsg{Type: msg.Type, No: 1, Data: err.Error()})
 			}
 			// notify self
 			conn.WriteJSON(info)

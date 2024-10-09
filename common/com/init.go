@@ -38,8 +38,10 @@ func NewDB(dbPath string) (*gorm.DB, error) {
 
 	var dsn gorm.Dialector
 	if strings.HasPrefix(dbPath, "postgres://") {
+		config.DBType = "postgres"
 		dsn = postgres.Open(dbPath)
 	} else {
+		config.DBType = "sqlite"
 		dsn = sqlite.Open(dbPath)
 	}
 	db, err := gorm.Open(dsn, &options)

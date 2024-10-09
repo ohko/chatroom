@@ -19,6 +19,9 @@ func GroupList() (list []config.TableGroup, err error) {
 }
 
 func GroupListByID(ids []int) (list []config.TableGroup, err error) {
+	config.DBLock.Lock()
+	defer config.DBLock.Unlock()
+
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 

@@ -161,16 +161,18 @@ func MessageSend(info *config.TableMessage) error {
 
 	tx.Commit()
 
-	if info.GroupID != 0 {
-		if userGroups, err := UserGroupListByGroupID(info.GroupID); err == nil {
-			for _, ug := range userGroups {
-				info.ToUserID = ug.UserID
-				WsSendMessageByUserID(info.ToUserID, info)
+	go func() {
+		if info.GroupID != 0 {
+			if userGroups, err := UserGroupListByGroupID(info.GroupID); err == nil {
+				for _, ug := range userGroups {
+					info.ToUserID = ug.UserID
+					WsSendMessageByUserID(info.ToUserID, info)
+				}
 			}
+		} else {
+			WsSendMessageByUserID(info.ToUserID, info)
 		}
-	} else {
-		WsSendMessageByUserID(info.ToUserID, info)
-	}
+	}()
 	return nil
 }
 

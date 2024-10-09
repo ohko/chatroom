@@ -107,6 +107,8 @@ func Test_usergroup(t *testing.T) {
 func Test_message(t *testing.T) {
 	com.Init(*dbPath)
 
+	biz.UserDeleteByAccount("fromUser")
+	biz.UserDeleteByAccount("toUser")
 	fromUser := config.TableUser{Account: "fromUser", Password: "fromUser"}
 	biz.UserUpdate(&fromUser)
 	defer biz.UserDelete(fromUser.UserID)

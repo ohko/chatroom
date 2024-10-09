@@ -30,6 +30,8 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	conn.WriteJSON(WSMsg{Type: "connected", Data: conn.RemoteAddr().String(), CreateTime: time.Now()})
+
 	fromUserID := 0
 
 	for {
@@ -46,13 +48,15 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 
 		switch msg.Type {
 		case "ping":
-			conn.WriteJSON(WSMsg{Type: "pong"})
+			conn.WriteJSON(WSMsg{Type: "pong", CreateTime: time.Now()})
 		case "bind":
 			if token, err := deToken(msg.Token); err == nil {
 				fromUserID = token.UserID
 				clients.Store(token.UserID, conn)
+				conn.WriteJSON(WSMsg{Type: "bind", No: 0, Data: "success", CreateTime: time.Now()})
+			} else {
+				conn.WriteJSON(WSMsg{Type: "bind", No: 1, Data: "failed", CreateTime: time.Now()})
 			}
-			conn.WriteJSON(WSMsg{Type: "bind", No: 0, Data: "success"})
 		case "text":
 			msg.FromUserID = fromUserID
 			info := config.TableMessage{
@@ -61,10 +65,13 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 				ToUserID:   msg.ToUserID,
 				GroupID:    msg.GroupID,
 				Content:    msg.Content,
+				CreateTime: time.Now(),
 			}
 			if err := SendMessage(&info); err != nil {
 				conn.WriteJSON(WSMsg{Type: "text", No: 1, Data: err.Error()})
 			}
+			// notify self
+			conn.WriteJSON(info)
 			msg.MessageID = info.MessageID
 		case "addGroup": // TODO
 		case "online": // TODO
@@ -89,7 +96,7 @@ func PingDeamon() {
 	for {
 		time.Sleep(time.Second * 30)
 		clients.Range(func(key, value any) bool {
-			if err := value.(*websocket.Conn).WriteJSON(WSMsg{Type: "ping"}); err != nil {
+			if err := value.(*websocket.Conn).WriteJSON(WSMsg{Type: "ping", CreateTime: time.Now()}); err != nil {
 				clients.Delete(key)
 			}
 			return true

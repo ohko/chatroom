@@ -375,6 +375,27 @@ func (Api) MessageList(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 	return common.H_JSON(0, list)
 }
 
+func (Api) MessageRead(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {
+	var data struct {
+		GroupID    int
+		FromUserID int
+	}
+	if err := common.ReadPostData(ctx, r, &data); err != nil {
+		return common.H_JSON(1, err.Error())
+	}
+
+	token, err := deToken(r.Header.Get(config.TokenName))
+	if err != nil {
+		return common.H_JSON(1, err.Error())
+	}
+
+	if err := biz.MessageRead(data.FromUserID, token.UserID, data.GroupID); err != nil {
+		return common.H_JSON(1, err.Error())
+	}
+
+	return common.H_JSON(0, "ok")
+}
+
 func (Api) ContactsAndLastMessage(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {
 	token, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {

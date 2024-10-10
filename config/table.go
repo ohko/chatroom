@@ -49,6 +49,7 @@ type TableMessage struct {
 	IsUndo     int       `gorm:"is_undo;comment:0=normal/1=undo"`
 	CreateTime time.Time `gorm:"create_time"`
 
-	FromUser TableUser `gorm:"foreignKey:FromUserID"`
-	ExtData  string    `gorm:"-"`
+	FromUser      TableUser `gorm:"foreignKey:FromUserID"`
+	SenderExtData string    `gorm:"-"`
+	ExtData       string    `gorm:"-"`
 }

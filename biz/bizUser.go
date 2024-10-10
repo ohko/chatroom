@@ -70,7 +70,7 @@ func UserLogin(account, password string, r *http.Request) (info config.TableUser
 
 func UserRegister(info *config.TableUser, r *http.Request) error {
 	if info.Account == "" || info.Password == "" {
-		return errors.New("account/password is empty")
+		return errors.New("Account/Password is empty")
 	}
 	config.DBLock.Lock()
 	defer config.DBLock.Unlock()

@@ -137,7 +137,7 @@ func Test_message(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := biz.MessageList(0, toUser.UserID, toUser.UserID, 0, 20)
+	list, err := biz.MessageList(testGroup.GroupID, toUser.UserID, toUser.UserID, 0, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,8 +148,81 @@ func Test_message(t *testing.T) {
 	if err := biz.MessageUndo(message.MessageID); err != nil {
 		t.Fatal(err)
 	}
-	if err := biz.MessageRead(message.MessageID); err != nil {
+	if err := biz.MessageRead(fromUser.UserID, toUser.UserID, testGroup.GroupID); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// go test -timeout 1h -run ^Test_lastMessage$ github.com/ohko/chatroom -v -count=1
+func Test_lastMessage(t *testing.T) {
+	com.Init(*dbPath)
+
+	biz.UserDeleteByAccount("fromUser")
+	biz.UserDeleteByAccount("toUser")
+	fromUser := config.TableUser{Account: "fromUser", Password: "fromUser"}
+	biz.UserUpdate(&fromUser)
+	defer biz.UserDelete(fromUser.UserID)
+	t.Log("from_user_id:", fromUser.UserID)
+	toUser := config.TableUser{Account: "toUser", Password: "toUser"}
+	biz.UserUpdate(&toUser)
+	defer biz.UserDelete(toUser.UserID)
+	t.Log("to_user_id:", toUser.UserID)
+
+	{ // simaple
+		message := config.TableMessage{FromUserID: fromUser.UserID, ToUserID: toUser.UserID, GroupID: 0, Type: "text", Content: "f=>t", CreateTime: time.Now()}
+		biz.MessageSend(&message)
+		list, _ := biz.ContactsAndLastMessage(fromUser.UserID)
+		for _, l := range list {
+			if l.Account != toUser.Account {
+				continue
+			}
+			if l.LastMessage.Content != message.Content {
+				t.Fatal(l.LastMessage)
+			}
+		}
+		message = config.TableMessage{FromUserID: toUser.UserID, ToUserID: fromUser.UserID, GroupID: 0, Type: "text", Content: "t=>f", CreateTime: time.Now()}
+		biz.MessageSend(&message)
+		list, _ = biz.ContactsAndLastMessage(fromUser.UserID)
+		for _, l := range list {
+			if l.Account != toUser.Account {
+				continue
+			}
+			if l.LastMessage.Content != message.Content {
+				t.Fatal(l.LastMessage)
+			}
+		}
+	}
+
+	testGroup := config.TableGroup{GroupName: "group001", CreateUserID: fromUser.UserID, OwnerID: fromUser.UserID}
+	biz.GroupCreate(&testGroup, []int{})
+	defer biz.GroupDelete(testGroup.GroupID)
+	biz.UserGroupjoin([]int{fromUser.UserID, toUser.UserID}, testGroup.GroupID)
+	defer biz.UserGroupRemove([]int{fromUser.UserID, toUser.UserID}, testGroup.GroupID)
+	{ // group
+		message := config.TableMessage{FromUserID: fromUser.UserID, GroupID: testGroup.GroupID, Type: "text", Content: "f=>t", CreateTime: time.Now()}
+		biz.MessageSend(&message)
+		list, _ := biz.ContactsAndLastMessage(fromUser.UserID)
+		for _, l := range list {
+			if l.GroupID != testGroup.GroupID {
+				continue
+			}
+			t.Log(l.LastMessage.Content)
+			if l.LastMessage.Content != message.Content {
+				t.Fatal(l.LastMessage)
+			}
+		}
+		message = config.TableMessage{FromUserID: toUser.UserID, GroupID: testGroup.GroupID, Type: "text", Content: "t=>f", CreateTime: time.Now()}
+		biz.MessageSend(&message)
+		list, _ = biz.ContactsAndLastMessage(fromUser.UserID)
+		for _, l := range list {
+			if l.GroupID != testGroup.GroupID {
+				continue
+			}
+			t.Log(l.LastMessage.Content)
+			if l.LastMessage.Content != message.Content {
+				t.Fatal(l.LastMessage)
+			}
+		}
 	}
 }
 

@@ -6,6 +6,10 @@
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Chatroom demo/test tool</title>
 	<style>
+		* {
+			font-size: 12px;
+		}
+
 		.boxs {
 			display: flex;
 		}
@@ -25,7 +29,8 @@
 		}
 
 		.contacts {
-			max-height: 200px;
+			width: 150px;
+			height: 300px;
 			overflow: scroll;
 		}
 	</style>
@@ -70,8 +75,8 @@
 			<div style="float: right;" onclick="this.parentNode.remove()">[X]</div>
 			<figcaption>Chat</figcaption>
 			<div style="display: flex;">
-				<div name="contacts"></div>
-				<textarea rows="10"></textarea>
+				<div name="contacts" class="contacts"></div>
+				<textarea rows="10" name="history"></textarea>
 			</div>
 			<form onsubmit="return sendMessage(this)">
 				<input name="index" value="0" type="hidden">
@@ -138,7 +143,7 @@
 
 		function sendMessage(f) {
 			let ws = wsArr[f.index.value]
-			let msg = { Type: "text", Content: f.Content.value, ExtData: new Date().getTime().toFixed(0) }
+			let msg = { Type: "text", Content: f.Content.value, SenderData: new Date().getTime().toFixed(0) }
 			if (f.to.value == 0) msg.ToUserID = parseInt(f.ToUserID.value)
 			else if (f.to.value == 1) msg.GroupID = parseInt(f.GroupID.value)
 			ws.send(msg)
@@ -158,8 +163,8 @@
 				let list = x.data.sort((x, y) => { return x.UserID < y.UserID ? -1 : 1 })
 				for (let i = 0; i < list.length; i++) {
 					f.ToUserID.innerHTML += `<option value="${list[i]["UserID"]}">${list[i]["UserID"]}: ${list[i]["Account"]}</option>`
-					document.querySelector("#quick").innerHTML += `<option>${list[i]["Account"]}</option>`
-					document.querySelector("#users").innerHTML += `<div id="user${list[i]["UserID"]}">${list[i]["UserID"]}. ${list[i]["Account"]}[<a href="javascript:void(delUser(${list[i]["UserID"]}))">DEL</a>]</div>`
+					document.querySelector("#quick").innerHTML += `<option value="${list[i]["Account"]}">${list[i]["Account"]}:${list[i]["RealName"]}</option>`
+					document.querySelector("#users").innerHTML += `<div id="user${list[i]["UserID"]}">${list[i]["UserID"]}. ${list[i]["Account"]}:${list[i]["RealName"]}[<a href="javascript:void(delUser(${list[i]["UserID"]}))">DEL</a>]</div>`
 				}
 			})
 		}
@@ -191,8 +196,39 @@
 				dom.innerHTML = ""
 				let list = x.data.sort((x, y) => { return x.GroupID < y.GroupID ? -1 : (x.UserID > y.UserID ? -1 : 1) })
 				for (let i = 0; i < list.length; i++) {
-					if (list[i].GroupID == 0) dom.innerHTML += `<div class="one">U${list[i]["UserID"]}. ${list[i]["Account"]}</div>`
-					else dom.innerHTML += `<div class="one">G${list[i]["GroupID"]}. ${list[i]["GroupName"]}</div>`
+					let star = ""
+					if (list[i].UnRead == 1) star = "*"
+					let last = ""
+					if (list[i].LastMessage) last = "<br>Last: " + list[i].LastMessage["FromUserID"] + ":" + list[i].LastMessage["Content"]
+					if (list[i].GroupID == 0) dom.innerHTML += `<div class="one" onclick="selectContact(this,${list[i]["UserID"]},0)">${star}UserID:U${list[i]["UserID"]}<br>Account:<b>${list[i]["Account"]}</b><br>Name:<b>${list[i]["RealName"]}</b>${last}</div>`
+					else dom.innerHTML += `<div class="one" onclick="selectContact(this,0,${list[i]["GroupID"]})">${star}GroupID:G${list[i]["GroupID"]}<br>Name:<b>${list[i]["GroupName"]}</b>${last}</div>`
+				}
+			})
+		}
+
+		function selectContact(e, userID, groupID) {
+			temp = e.parentNode.parentNode.parentNode
+			let f = temp.querySelector("form")
+			let history = temp.querySelector("textarea")
+			if (userID != 0) {
+				f.to.value = 0
+				f.ToUserID.value = userID
+			}
+			else {
+				f.to.value = 1
+				f.GroupID.value = groupID
+			}
+			fetch(apiURL + "/MessageList", {
+				method: "POST", headers: { "Content-Type": "application/json", "Token": f.Token.value },
+				body: JSON.stringify({ GroupID: groupID, FromUserID: userID, PageSize: 20, Page: 1 }),
+			}).then(x => x.json()).then(x => {
+				if (x.no != 0) return document.querySelector("#log").innerHTML += `[MessageList] ${x.data}\n`
+
+				history.value = ""
+				let list = x.data
+				for (let i = 0; i < list.length; i++) {
+					if (list[i].GroupID != 0) history.value += `${list[i]["FromUserID"]}.${list[i]["FromUser"]["Account"]}:${list[i]["FromUser"]["RealName"]}: ${list[i]["Content"]}\n`
+					else history.value += `${list[i]["FromUserID"]}.${list[i]["FromUser"]["Account"]}:${list[i]["FromUser"]["RealName"]}: ${list[i]["Content"]}\n`
 				}
 			})
 		}
@@ -201,10 +237,12 @@
 			try {
 				let msg = JSON.parse(x.data)
 				if (msg.Type == "text") {
-					let box = document.querySelector(`[name=user_${msg.ToUserID}]`)
-					let prefix = `[User${msg.FromUserID}]`
-					if (msg.GroupID != 0) prefix = `[Group${msg.GroupID}]` + prefix
-					box.querySelector("textarea").value += prefix + msg.FromUser.RealName + ":" + msg.Content + "\n"
+					if (msg.MessageID == 0) {
+						return
+					}
+					let cc = document.querySelectorAll("textarea")[this.index].value.split("\n")
+					if (cc.length >= 20) cc = cc.slice(cc.length - 20)
+					document.querySelectorAll("textarea")[this.index].value = cc.join("\n") + msg.FromUser.UserID + "." + msg.FromUser.Account + ":" + msg.FromUser.RealName + ": " + msg.Content + "\n"
 				} else if (msg.Type == "ping") {
 					this.send({ Type: "pong" })
 				}
@@ -315,7 +353,6 @@
 				}
 			}
 			connect() {
-				console.log("Connection connect...")
 				this.ws = new WebSocket(this.url)
 				this.ws.onopen = this.onopen.bind(this)
 				this.ws.onerror = this.onerror.bind(this)
@@ -326,11 +363,10 @@
 				console.log(e)
 			}
 			onopen() {
-				console.log("Connection connect success")
 				this.send({ Type: "bind", Token: this.token })
 			}
 			onclose(e) {
-				console.log("Connection closed")
+				console.log("Reconnect ...")
 				setTimeout(this.connect.bind(this), 3000)
 			}
 		}

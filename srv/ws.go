@@ -64,19 +64,22 @@ func wsHandler(w http.ResponseWriter, r *http.Request) {
 		case "text", "image":
 			msg.FromUserID = fromUserID
 			info := config.TableMessage{
-				Type:       msg.Type,
-				FromUserID: msg.FromUserID,
-				ToUserID:   msg.ToUserID,
-				GroupID:    msg.GroupID,
-				Content:    msg.Content,
-				CreateTime: time.Now(),
-				ExtData:    msg.ExtData,
+				Type:          msg.Type,
+				FromUserID:    msg.FromUserID,
+				ToUserID:      msg.ToUserID,
+				GroupID:       msg.GroupID,
+				Content:       msg.Content,
+				CreateTime:    time.Now(),
+				SenderExtData: msg.SenderExtData,
+				ExtData:       msg.ExtData,
 			}
+			selfInfo := info
 			if err := biz.MessageSend(&info); err != nil {
 				biz.WsSendError(conn, err)
 			}
 			// notify self
-			biz.WsSendMessageByConn(conn, &info)
+			selfInfo.FromUser = info.FromUser
+			biz.WsSendMessageByConn(conn, &selfInfo)
 			msg.MessageID = info.MessageID
 		}
 

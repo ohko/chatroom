@@ -24,17 +24,18 @@ type ResultData struct {
 }
 
 type WSMsg struct {
-	Type       string // ping/pong/text/image
-	Token      string `json:",omitempty"` // type=bind
-	MessageID  int    `json:",omitempty"`
-	FromUserID int    `json:",omitempty"`
-	ToUserID   int    `json:",omitempty"`
-	GroupID    int    `json:",omitempty"`
-	Content    string `json:",omitempty"`
-	No         int    `json:",omitempty"`
-	Data       any    `json:",omitempty"`
-	CreateTime time.Time
-	ExtData    string
+	Type          string // ping/pong/text/image
+	Token         string `json:",omitempty"` // type=bind
+	MessageID     int    `json:",omitempty"`
+	FromUserID    int    `json:",omitempty"`
+	ToUserID      int    `json:",omitempty"`
+	GroupID       int    `json:",omitempty"`
+	Content       string `json:",omitempty"`
+	No            int    `json:",omitempty"`
+	Data          any    `json:",omitempty"`
+	CreateTime    time.Time
+	SenderExtData string
+	ExtData       string
 }
 
 type Contact struct {
@@ -44,5 +45,6 @@ type Contact struct {
 	RealName    string
 	GroupName   string
 	Avatar      string
+	UnRead      int
 	LastMessage *TableMessage `gorm:"-"`
 }

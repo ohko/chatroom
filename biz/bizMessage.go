@@ -23,18 +23,22 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 		return
 	}
 
-	{
+	{ // last user message
 		var msgs []config.TableMessage
-		subQuery := tx.Model(&config.TableMessage{}).Select("*, ROW_NUMBER() OVER (PARTITION BY from_user_id, to_user_id ORDER BY message_id DESC) as rn_user").Where("group_id=0")
+		subQuery := tx.Model(&config.TableMessage{}).Select("*, ROW_NUMBER() OVER (PARTITION BY from_user_id, to_user_id ORDER BY message_id DESC) as rn_user").Where("group_id=0 AND (to_user_id=? OR from_user_id=?)", userID, userID)
 		if err = tx.Preload("FromUser").Table("(?) as a", subQuery).Where(`rn_user=1`).Find(&msgs).Error; err != nil {
 			return
 		}
 		msgsIndex := map[any]config.TableMessage{}
 		for _, m := range msgs {
+			var key string
 			if m.FromUserID <= m.ToUserID {
-				msgsIndex[fmt.Sprintf("0::%v::%v", m.FromUserID, m.ToUserID)] = m
+				key = fmt.Sprintf("0::%v::%v", m.FromUserID, m.ToUserID)
 			} else {
-				msgsIndex[fmt.Sprintf("0::%v::%v", m.ToUserID, m.FromUserID)] = m
+				key = fmt.Sprintf("0::%v::%v", m.ToUserID, m.FromUserID)
+			}
+			if v, ok := msgsIndex[key]; !ok || v.MessageID < m.MessageID {
+				msgsIndex[key] = m
 			}
 		}
 		for i, u := range users {
@@ -46,6 +50,9 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 			}
 			if m, ok := msgsIndex[key]; ok {
 				users[i].LastMessage = &m
+				if m.IsRead == 0 && m.ToUserID == userID {
+					users[i].UnRead = 1
+				}
 			}
 		}
 	}
@@ -59,9 +66,9 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 		return
 	}
 
-	{
+	{ // last group message
 		var msgs []config.TableMessage
-		subQuery := tx.Model(&config.TableMessage{}).Select("*, ROW_NUMBER() OVER (PARTITION BY group_id ORDER BY message_id DESC) as rn_group").Where("group_id!=0")
+		subQuery := tx.Model(&config.TableMessage{}).Select("*, ROW_NUMBER() OVER (PARTITION BY group_id ORDER BY message_id DESC) as rn_group").Where("group_id!=0 AND to_user_id=?", userID)
 		if err = tx.Preload("FromUser").Table("(?) as a", subQuery).Where(`rn_group=1`).Find(&msgs).Error; err != nil {
 			return
 		}
@@ -72,6 +79,9 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 		for i, g := range groups {
 			if m, ok := msgsIndex[g.GroupID]; ok {
 				groups[i].LastMessage = &m
+				if m.IsRead == 0 && m.ToUserID == userID {
+					groups[i].UnRead = 1
+				}
 			}
 			groups[i].UserID = 0
 		}
@@ -107,18 +117,9 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 	defer tx.Rollback()
 
 	if groupID != 0 {
-		err = tx.Preload("FromUser").Where("group_id=?", groupID).Order("message_id DESC").Offset(offset).Limit(limit).Find(&list).Error
+		err = tx.Preload("FromUser").Where("group_id=? AND to_user_id=?", groupID, ToUserID).Order("message_id DESC").Offset(offset).Limit(limit).Find(&list).Error
 	} else {
 		err = tx.Preload("FromUser").Where("group_id=0 AND ((from_user_id=? AND to_user_id=?) OR (from_user_id=? AND to_user_id=?))", FromUserID, ToUserID, ToUserID, FromUserID).Order("message_id DESC").Offset(offset).Limit(limit).Find(&list).Error
-	}
-
-	ids := []int{}
-	for _, l := range list {
-		ids = append(ids, l.MessageID)
-	}
-
-	if len(ids) != 0 {
-		err = tx.Model(&config.TableMessage{}).Where("is_read=0 AND message_id IN ?", ids).UpdateColumn("is_read", 1).Error
 	}
 
 	if err != nil {
@@ -132,47 +133,55 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 	list = reversed
 
 	tx.Commit()
+	go MessageRead(FromUserID, ToUserID, groupID)
 	return
 }
 
 func MessageSend(info *config.TableMessage) error {
 	if info.FromUserID == 0 || info.Type == "" || info.Content == "" {
-		return errors.New("from_user_id/type/content is empty")
+		return errors.New("FromUserID/Type/Content is empty")
 	}
 	if info.ToUserID == 0 && info.GroupID == 0 {
-		return errors.New("group_id or to_user_id both empty")
+		return errors.New("GroupID or ToUserID do not both empty")
 	}
 	config.DBLock.Lock()
 	defer config.DBLock.Unlock()
 
-	info.MessageID = 0
 	info.CreateTime = time.Now()
 
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 
-	if err := tx.Create(&info).Error; err != nil {
-		return err
-	}
-
-	if err := tx.First(&info.FromUser, info.FromUserID).Error; err != nil {
-		return err
+	if info.GroupID != 0 {
+		var list []config.TableUserGroup
+		if err := tx.Where(&config.TableUserGroup{GroupID: info.GroupID}).Find(&list).Error; err != nil {
+			return err
+		}
+		for _, l := range list {
+			info.MessageID = 0
+			info.ToUserID = l.UserID
+			if err := tx.Create(&info).Error; err != nil {
+				return err
+			}
+			if err := tx.First(&info.FromUser, info.FromUserID).Error; err != nil {
+				return err
+			}
+			info.SenderExtData = ""
+			WsSendMessageByUserID(info.ToUserID, info)
+		}
+	} else {
+		info.MessageID = 0
+		if err := tx.Create(&info).Error; err != nil {
+			return err
+		}
+		if err := tx.First(&info.FromUser, info.FromUserID).Error; err != nil {
+			return err
+		}
+		info.SenderExtData = ""
+		WsSendMessageByUserID(info.ToUserID, info)
 	}
 
 	tx.Commit()
-
-	go func() {
-		if info.GroupID != 0 {
-			if userGroups, err := UserGroupListByGroupID(info.GroupID); err == nil {
-				for _, ug := range userGroups {
-					info.ToUserID = ug.UserID
-					WsSendMessageByUserID(info.ToUserID, info)
-				}
-			}
-		} else {
-			WsSendMessageByUserID(info.ToUserID, info)
-		}
-	}()
 	return nil
 }
 
@@ -195,9 +204,12 @@ func MessageUndo(messageID int) error {
 	return nil
 }
 
-func MessageRead(messageID int) error {
-	if messageID == 0 {
-		return errors.New("MessageID is empty")
+func MessageRead(fromUserID, toUserID, groupID int) error {
+	if toUserID == 0 {
+		return errors.New("ToUserID is empty")
+	}
+	if fromUserID == 0 && groupID == 0 {
+		return errors.New("FromUserID or GroupID do not both empty")
 	}
 	config.DBLock.Lock()
 	defer config.DBLock.Unlock()
@@ -205,9 +217,14 @@ func MessageRead(messageID int) error {
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 
-	info := config.TableMessage{MessageID: messageID}
-	if err := tx.Model(&info).Where(&info).Update("is_read", 1).Error; err != nil {
-		return err
+	if groupID != 0 {
+		if err := tx.Model(&config.TableMessage{}).Where("is_read=0 AND group_id=? AND to_user_id=?", groupID, toUserID).Update("is_read", 1).Error; err != nil {
+			return err
+		}
+	} else {
+		if err := tx.Model(&config.TableMessage{}).Where("is_read=0 AND from_user_id=? AND to_user_id=?", fromUserID, toUserID).Update("is_read", 1).Error; err != nil {
+			return err
+		}
 	}
 
 	tx.Commit()

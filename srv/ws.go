@@ -95,7 +95,6 @@ func PingDeamon() {
 		time.Sleep(time.Second * 30)
 		biz.WsRange(func(key, value any) bool {
 			if err := biz.WsSendPing(value.(*websocket.Conn)); err != nil {
-				biz.WsRemoveClient(key.(int))
 				value.(*websocket.Conn).Close()
 			}
 			return true

@@ -396,6 +396,20 @@ func (Api) MessageRead(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 	return common.H_JSON(0, "ok")
 }
 
+func (Api) MessageLastList(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {
+	token, err := deToken(r.Header.Get(config.TokenName))
+	if err != nil {
+		return common.H_JSON(1, err.Error())
+	}
+
+	list, err := biz.MessageLastList(token.UserID)
+	if err != nil {
+		return common.H_JSON(1, err.Error())
+	}
+
+	return common.H_JSON(0, list)
+}
+
 func (Api) ContactsAndLastMessage(ctx *config.Context, w http.ResponseWriter, r *http.Request) *config.ResultData {
 	token, err := deToken(r.Header.Get(config.TokenName))
 	if err != nil {

@@ -137,6 +137,34 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 	return
 }
 
+func MessageLastList(userID int) (list []config.TableMessage, err error) {
+	if userID == 0 {
+		return nil, errors.New("UserID is empty")
+	}
+	config.DBLock.Lock()
+	defer config.DBLock.Unlock()
+
+	tx := config.DB.Begin()
+	defer tx.Rollback()
+
+	// last user message
+	var msgs1 []config.TableMessage
+	subQuery1 := tx.Model(&config.TableMessage{}).Select("*, ROW_NUMBER() OVER (PARTITION BY from_user_id, to_user_id ORDER BY message_id DESC) as rn_user").Where("group_id=0 AND to_user_id=?", userID)
+	if err = tx.Preload("FromUser").Table("(?) as a", subQuery1).Where(`rn_user=1`).Find(&msgs1).Error; err != nil {
+		return
+	}
+
+	// last group message
+	var msgs2 []config.TableMessage
+	subQuery2 := tx.Model(&config.TableMessage{}).Select("*, ROW_NUMBER() OVER (PARTITION BY group_id ORDER BY message_id DESC) as rn_group").Where("group_id!=0 AND to_user_id=?", userID)
+	if err = tx.Preload("FromUser").Table("(?) as a", subQuery2).Where(`rn_group=1`).Find(&msgs2).Error; err != nil {
+		return
+	}
+
+	list = append(msgs1, msgs2...)
+	return
+}
+
 func MessageSend(info *config.TableMessage) error {
 	if info.FromUserID == 0 || info.Type == "" || info.Content == "" {
 		return errors.New("FromUserID/Type/Content is empty")

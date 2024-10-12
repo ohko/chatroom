@@ -1,0 +1,19 @@
+meta {
+  name: UserList
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{URL}}/UserList
+  body: json
+  auth: none
+}
+
+headers {
+  token: {{token}}
+}
+
+assert {
+  res.body.no: eq 0
+}

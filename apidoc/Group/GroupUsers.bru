@@ -1,0 +1,25 @@
+meta {
+  name: GroupUsers
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{URL}}/GroupUsers
+  body: json
+  auth: none
+}
+
+headers {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "GroupID": 1
+  }
+}
+
+assert {
+  res.body.no: eq 0
+}

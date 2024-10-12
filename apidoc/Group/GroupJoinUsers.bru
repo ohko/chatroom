@@ -1,0 +1,29 @@
+meta {
+  name: GroupJoinUsers
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{URL}}/GroupJoinUsers
+  body: json
+  auth: none
+}
+
+headers {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "GroupID": 1,
+    "Users": [
+      3,
+      4
+    ]
+  }
+}
+
+assert {
+  res.body.no: eq 0
+}

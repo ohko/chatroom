@@ -1,0 +1,28 @@
+meta {
+  name: MessageList
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{URL}}/MessageList
+  body: json
+  auth: none
+}
+
+headers {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "GroupID": 1,
+    "FromUserID": 2,
+    "Page": 1,
+    "PageSize": 20
+  }
+}
+
+assert {
+  res.body.no: eq 0
+}

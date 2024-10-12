@@ -1,0 +1,19 @@
+meta {
+  name: GroupListAll
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{URL}}/GroupListAll
+  body: json
+  auth: none
+}
+
+headers {
+  token: {{token}}
+}
+
+assert {
+  res.body.no: eq 0
+}

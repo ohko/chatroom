@@ -1,0 +1,26 @@
+meta {
+  name: UserUpdate
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{URL}}/UserUpdate
+  body: json
+  auth: none
+}
+
+headers {
+  token: {{token}}
+}
+
+body:json {
+  {
+      "RealName":"newName",
+      "Avatar":""
+  }
+}
+
+assert {
+  res.body.no: eq 0
+}

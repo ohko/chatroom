@@ -1,0 +1,19 @@
+meta {
+  name: ContactsAndLastMessage
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{URL}}/ContactsAndLastMessage
+  body: json
+  auth: none
+}
+
+headers {
+  token: {{token}}
+}
+
+assert {
+  res.body.no: eq 0
+}

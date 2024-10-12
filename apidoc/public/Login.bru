@@ -1,0 +1,27 @@
+meta {
+  name: Login
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{URL}}/Login
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "Account": "account",
+    "Password": "account"
+  }
+}
+
+assert {
+  res.body.no: eq 0
+}
+
+script:post-response {
+  const token = res.body.data.Token
+  bru.setVar("token",token)
+}

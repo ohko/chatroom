@@ -1,0 +1,22 @@
+meta {
+  name: UnRegister
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{URL}}/UnRegister
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "Account": "account",
+    "Password": "account"
+  }
+}
+
+assert {
+  res.body.no: eq 0
+}

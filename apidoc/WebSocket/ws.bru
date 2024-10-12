@@ -1,0 +1,27 @@
+meta {
+  name: ws
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{URL}}/ws
+  body: none
+  auth: none
+}
+
+docs {
+  # ping
+  {"Type": "ping"}
+  
+  # bind
+  {"Type": "bind","Token": "d77d1e1b3a26e05ce287491b5683daa85f993d7cf88f166f7210c6c2"}
+  
+  # send
+  {
+    "Type": "text",
+    "ToUserID": 2,
+    "GroupID": 0,
+    "Content": "hello"
+  }
+}

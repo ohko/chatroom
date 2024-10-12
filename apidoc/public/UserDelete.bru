@@ -1,0 +1,21 @@
+meta {
+  name: UserDelete
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{URL}}/UserDelete
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "UserID": 1
+  }
+}
+
+assert {
+  res.body.no: eq 0
+}

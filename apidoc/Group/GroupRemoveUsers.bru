@@ -1,0 +1,29 @@
+meta {
+  name: GroupRemoveUsers
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{URL}}/GroupRemoveUsers
+  body: json
+  auth: none
+}
+
+headers {
+  token: {{token}}
+}
+
+body:json {
+  {
+    "GroupID": 1,
+    "Users": [
+      3,
+      4
+    ]
+  }
+}
+
+assert {
+  res.body.no: eq 0
+}

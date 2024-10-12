@@ -8,7 +8,7 @@ chatroom services or embeded chatroom
 
 ## api docs
 
-https://doc.apipost.net/docs/34ab26f038e5000
+bruno: ./apidoc
 
 ## service mode
 ```shell

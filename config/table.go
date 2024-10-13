@@ -25,6 +25,7 @@ type TableGroup struct {
 	CreateTime   time.Time `gorm:"create_time"`
 	UpdateTime   time.Time `gorm:"update_time"`
 	OwnerID      int       `gorm:"owner_id;index"`
+	ExtData      string
 }
 
 type TableUserGroup struct {

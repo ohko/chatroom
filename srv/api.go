@@ -402,7 +402,7 @@ func (Api) MessageLastList(ctx *config.Context, w http.ResponseWriter, r *http.R
 		return common.H_JSON(1, err.Error())
 	}
 
-	list, err := biz.MessageLastList(token.UserID)
+	list, err := biz.MessageLastList([]int{token.UserID})
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}

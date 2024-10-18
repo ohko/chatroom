@@ -42,14 +42,21 @@ func UserGroupjoin(userIDs []int, groupID int) error {
 	tx := config.DB.Begin()
 	defer tx.Rollback()
 
+	var count int64
 	for _, id := range userIDs {
-		info := config.TableUserGroup{UserID: id, GroupID: groupID, JoinTime: time.Now()}
-		if err := tx.Save(&info).Error; err != nil {
+		info := config.TableUserGroup{UserID: id, GroupID: groupID}
+		if err := tx.Model(&info).Where(&info).Count(&count).Error; err != nil {
 			return err
+		}
+		if count == 0 {
+			info.JoinTime = time.Now()
+			if err := tx.Create(&info).Error; err != nil {
+				return err
+			}
+			tx.Commit()
 		}
 	}
 
-	tx.Commit()
 	go WsNotifyUserGroupJoin(groupID, userIDs)
 	return nil
 }

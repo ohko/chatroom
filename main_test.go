@@ -137,7 +137,7 @@ func Test_message(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	list, err := biz.MessageList(testGroup.GroupID, toUser.UserID, toUser.UserID, 0, 20)
+	list, err := biz.MessageList(testGroup.GroupID, toUser.UserID, toUser.UserID, 0, 20, true)
 	if err != nil {
 		t.Fatal(err)
 	}

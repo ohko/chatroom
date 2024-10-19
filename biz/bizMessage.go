@@ -109,7 +109,7 @@ func ContactsAndLastMessageByAccount(account string) (list []config.Contact, err
 	return ContactsAndLastMessage(info.UserID)
 }
 
-func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []config.TableMessage, err error) {
+func MessageList(groupID, FromUserID, ToUserID, offset, limit int, markRead bool) (list []config.TableMessage, err error) {
 	config.DBLock.Lock()
 	defer config.DBLock.Unlock()
 
@@ -133,7 +133,9 @@ func MessageList(groupID, FromUserID, ToUserID, offset, limit int) (list []confi
 	list = reversed
 
 	tx.Commit()
-	go MessageRead(FromUserID, ToUserID, groupID)
+	if markRead {
+		go MessageRead(FromUserID, ToUserID, groupID)
+	}
 	return
 }
 

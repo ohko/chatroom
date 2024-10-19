@@ -42,6 +42,23 @@ func UserDetail(UserID int) (info config.TableUser, err error) {
 	return
 }
 
+func UserDetailByAccount(account string) (info config.TableUser, err error) {
+	if account == "" {
+		err = errors.New("Account is empty")
+		return
+	}
+
+	config.DBLock.Lock()
+	defer config.DBLock.Unlock()
+
+	tx := config.DB.Begin()
+	defer tx.Rollback()
+
+	info = config.TableUser{Account: account}
+	err = tx.Where(&info).First(&info).Error
+	return
+}
+
 func UserLogin(account, password string, r *http.Request) (info config.TableUser, err error) {
 	config.DBLock.Lock()
 	defer config.DBLock.Unlock()

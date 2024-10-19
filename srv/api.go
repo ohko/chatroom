@@ -367,7 +367,7 @@ func (Api) MessageList(ctx *config.Context, w http.ResponseWriter, r *http.Reque
 		return common.H_JSON(1, err.Error())
 	}
 
-	list, err := biz.MessageList(data.GroupID, data.FromUserID, token.UserID, (data.Page-1)*data.PageSize, data.PageSize)
+	list, err := biz.MessageList(data.GroupID, data.FromUserID, token.UserID, (data.Page-1)*data.PageSize, data.PageSize, true)
 	if err != nil {
 		return common.H_JSON(1, err.Error())
 	}

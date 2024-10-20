@@ -17,7 +17,7 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 
 	var users []config.Contact
 	if err = tx.Model(&config.TableUser{}).
-		Select(`user_id, account, real_name, avatar`).
+		Select(`user_id, account, real_name, avatar, '' AS ext_data`).
 		Where("user_id!=?", userID).
 		Find(&users).Error; err != nil {
 		return
@@ -59,7 +59,7 @@ func ContactsAndLastMessage(userID int) (list []config.Contact, err error) {
 
 	var groups []config.Contact
 	if err = tx.Model(&config.TableUserGroup{}).
-		Select(`g.group_id AS group_id,group_name, avatar, user_id`).
+		Select(`g.group_id AS group_id,group_name, avatar, user_id, ext_data`).
 		Joins(`LEFT JOIN table_group g ON g.group_id=table_user_group.group_id`).
 		Where(`user_id=?`, userID).
 		Find(&groups).Error; err != nil {
@@ -190,6 +190,9 @@ func MessageSend(info *config.TableMessage) error {
 		for _, l := range list {
 			info.MessageID = 0
 			info.ToUserID = l.UserID
+			if info.FromUserID == info.ToUserID {
+				info.IsRead = 1
+			}
 			if err := tx.Create(&info).Error; err != nil {
 				return err
 			}

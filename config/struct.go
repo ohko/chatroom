@@ -46,5 +46,6 @@ type Contact struct {
 	GroupName   string
 	Avatar      string
 	UnRead      int
+	ExtData     string
 	LastMessage *TableMessage `gorm:"-"`
 }
